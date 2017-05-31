@@ -11,10 +11,11 @@ import os.path as osp
 
 import time
 
+
 def preprocess_cvimg(cv_img):
-    #BGR->RGB
-    img = cv_img[:,:,(2,1,0)]
-    #Normalize
+    # BGR->RGB
+    img = cv_img[:, :, (2, 1, 0)]
+    # Normalize
     img = (img - 127.5) * 0.0078125  # [0,255] -> [-1,1]
 
     return img
@@ -25,7 +26,7 @@ def bbox_reg(bbox, reg):
 
     # calibrate bouding boxes
     if reg.shape[1] == 1:
-        print "reshape of reg"
+        print("reshape of reg")
         pass  # reshape of reg
 
     w = bbox[:, 2] - bbox[:, 0] + 1
@@ -174,7 +175,7 @@ def generate_bboxes(scores_map, reg, scale, t):
 
     (x, y) = np.where(scores_map >= t)
 
-    if len(x)<1:
+    if len(x) < 1:
         return None
 
     yy = y
@@ -230,7 +231,7 @@ def detect_face(cv_img, minsize, PNet, RNet, ONet, threshold, factor):
     ###############
     t1 = time.clock()
 
-    ### 1.1 run PNet
+    # 1.1 run PNet
     for scale in scales:
         hs = int(np.ceil(h * scale))
         ws = int(np.ceil(w * scale))
@@ -262,12 +263,12 @@ def detect_face(cv_img, minsize, PNet, RNet, ONet, threshold, factor):
     #print("-->PNet cost %f seconds, processed %d pyramid scales" % ((t2-t1), len(scales)) )
 
     n_boxes = total_boxes.shape[0]
-    #print("-->PNet outputs #total_boxes = %d" % n_boxes)
+    # print("-->PNet outputs #total_boxes = %d" % n_boxes)
 
     if n_boxes < 1:
         return (None, None)
 
-    ### 1.2 run NMS
+    # 1.2 run NMS
     t1 = time.clock()
 
     pick = nms(total_boxes, 0.7, 'Union')
@@ -282,7 +283,7 @@ def detect_face(cv_img, minsize, PNet, RNet, ONet, threshold, factor):
 
     total_boxes = total_boxes[pick, :]
 
-    ### revise and convert to square
+    # revise and convert to square
     regh = total_boxes[:, 3] - total_boxes[:, 1]
     regw = total_boxes[:, 2] - total_boxes[:, 0]
 
@@ -299,13 +300,12 @@ def detect_face(cv_img, minsize, PNet, RNet, ONet, threshold, factor):
     total_boxes[:, 0:4] = np.fix(total_boxes[:, 0:4])
     [dy, edy, dx, edx, y, ey, x, ex, tmpw, tmph] = pad(total_boxes, w, h)
 
-
     ###############
     # Second stage
     ###############
     t1 = time.clock()
 
-    ### 2.1 construct input for RNet
+    # 2.1 construct input for RNet
     tmp_img = np.zeros((n_boxes, 24, 24, 3))  # (24, 24, 3, n_boxes)
     for k in range(n_boxes):
         tmp = np.zeros((int(tmph[k]), int(tmpw[k]), 3))
@@ -322,7 +322,7 @@ def detect_face(cv_img, minsize, PNet, RNet, ONet, threshold, factor):
 
         tmp_img[k, :, :, :] = cv2.resize(tmp, (24, 24))
 
-    ### 2.2 run RNet
+    # 2.2 run RNet
     tmp_img = np.swapaxes(tmp_img, 1, 3)
 
     RNet.blobs['data'].reshape(n_boxes, 3, 24, 24)
@@ -336,7 +336,7 @@ def detect_face(cv_img, minsize, PNet, RNet, ONet, threshold, factor):
     #print("-->RNet cost %f seconds, processed %d boxes, avg time: %f seconds" % ((t2-t1), n_boxes, (t2-t1)/n_boxes) )
 
     n_boxes = pass_t.shape[0]
-    #print("-->RNet outputs #total_boxes = %d" % n_boxes)
+    # print("-->RNet outputs #total_boxes = %d" % n_boxes)
 
     if n_boxes < 1:
         return (None, None)
@@ -345,7 +345,7 @@ def detect_face(cv_img, minsize, PNet, RNet, ONet, threshold, factor):
     total_boxes = np.concatenate((total_boxes[pass_t, 0:4], scores), axis=1)
     reg_factors = out['conv5-2'][pass_t, :].T
 
-    ### 2.3 NMS
+    # 2.3 NMS
     t1 = time.clock()
     pick = nms(total_boxes, 0.7, 'Union')
     t2 = time.clock()
@@ -362,12 +362,11 @@ def detect_face(cv_img, minsize, PNet, RNet, ONet, threshold, factor):
     total_boxes = bbox_reg(total_boxes, reg_factors[:, pick])
     total_boxes = convert_to_squares(total_boxes)
 
-
     ###############
     # Third stage
     ###############
 
-    ### 3.1 construct input for RNet
+    # 3.1 construct input for RNet
 
     total_boxes = np.fix(total_boxes)
     [dy, edy, dx, edx, y, ey, x, ex, tmpw, tmph] = pad(total_boxes, w, h)
@@ -380,7 +379,7 @@ def detect_face(cv_img, minsize, PNet, RNet, ONet, threshold, factor):
         tmp_img[k, :, :, :] = cv2.resize(tmp, (48, 48))
 #            tmp_img = (tmp_img - 127.5) * 0.0078125  # [0,255] -> [-1,1]
 
-    ### 3.2 run ONet
+    # 3.2 run ONet
     t1 = time.clock()
 
     tmp_img = np.swapaxes(tmp_img, 1, 3)
@@ -396,7 +395,7 @@ def detect_face(cv_img, minsize, PNet, RNet, ONet, threshold, factor):
     #print("-->ONet cost %f seconds, processed %d boxes, avg time: %f seconds" % ((t2-t1), n_boxes, (t2-t1)/n_boxes ))
 
     n_boxes = pass_t.shape[0]
-    #print("-->ONet outputs #total_boxes = %d" % n_boxes)
+    # print("-->ONet outputs #total_boxes = %d" % n_boxes)
 
     if n_boxes < 1:
         return (None, None)
@@ -437,10 +436,10 @@ def detect_face(cv_img, minsize, PNet, RNet, ONet, threshold, factor):
 
 
 def initFaceDetector(caffe_model_path):
-#    minsize = 20
-#     caffe_model_path = "/home/duino/iactive/mtcnn/model"
-#    threshold = [0.6, 0.7, 0.7]
-#    factor = 0.709
+    #    minsize = 20
+    #     caffe_model_path = "/home/duino/iactive/mtcnn/model"
+    #    threshold = [0.6, 0.7, 0.7]
+    #    factor = 0.709
     # caffe.set_mode_cpu()
     caffe.set_mode_gpu()
     PNet = caffe.Net(caffe_model_path + "/det1.prototxt",
@@ -507,8 +506,8 @@ def main():
             img, minsize, PNet, RNet, ONet, threshold, scale_factor)
 
         t2 = time.clock()
-        ttl_time += t2-t1
-        print("detect_face() costs %f seconds" % (t2-t1))
+        ttl_time += t2 - t1
+        print("detect_face() costs %f seconds" % (t2 - t1))
 
 #        print('output bboxes: ' + str(bboxes))
 #        print('output points: ' + str(points))
@@ -522,9 +521,11 @@ def main():
                 bboxes[i][2]), int(bboxes[i][3])), (0, 255, 0), 1)
 
             for j in range(5):
-                cv2.circle(img, (int(points[i][j]), int(points[i][j+5])), 2, (0, 0, 255), 1, -1)
+                cv2.circle(img, (int(points[i][j]), int(
+                    points[i][j + 5])), 2, (0, 0, 255), 1, -1)
 
-        print("\n===> Processed %d images, costs %f seconds, avg time: %f seconds" % (img_cnt, ttl_time, ttl_time/img_cnt))
+        print("\n===> Processed %d images, costs %f seconds, avg time: %f seconds" % (
+            img_cnt, ttl_time, ttl_time / img_cnt))
 
         save_name = osp.join(save_dir, osp.basename(imgpath))
         cv2.imwrite(save_name, img)
@@ -540,7 +541,6 @@ def main():
 
     if show_img:
         cv2.destroyAllWindows()
-
 
 
 if __name__ == "__main__":
