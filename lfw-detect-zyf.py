@@ -19,9 +19,10 @@ def print_usage():
     print('USAGE: ' + usage)
 
 
-def main(img_list_fn,
+def main(lfw_list_fn,
+         lfw_root,
          save_dir,
-         save_img=True,
+         save_img=False,
          show_img=False):
 
     minsize = 20
@@ -32,7 +33,7 @@ def main(img_list_fn,
     if not osp.exists(save_dir):
         os.makedirs(save_dir)
 
-    fp_rlt = open(osp.join(save_dir, 'fd_rlt.json'), 'w')
+    fp_rlt = open(osp.join(save_dir, 'lfw_mtcnn_fd_rlt.json'), 'w')
 
     result_list = []
 
@@ -41,7 +42,7 @@ def main(img_list_fn,
     t2 = time.clock()
     print("initFaceDetector() costs %f seconds" % (t2 - t1))
 
-    fp = open(img_list_fn, 'r')
+    fp = open(lfw_list_fn, 'r')
 
     ttl_time = 0.0
     img_cnt = 0
@@ -56,22 +57,32 @@ def main(img_list_fn,
             print 'skip line starts with #, skip to next'
             continue
 
+        splits = imgpath.split()
+        imgpath = splits[0]
+
+        id = 'unkown' if len(splits) < 2 else splits[1]
+
+        if not imgpath.startswith('/'):
+            fullpath = osp.join(lfw_root, imgpath)
+        else:
+            fullpath = imgpath
+
         rlt = {}
         rlt["filename"] = imgpath
         rlt["faces"] = []
         rlt['face_count'] = 0
+        rlt['id'] = id
 
         try:
-            img = cv2.imread(imgpath)
+            img = cv2.imread(fullpath)
         except:
-            print('failed to load image: ' + imgpath)
+            print('failed to load image: ' + fullpath)
             rlt["message"] = "failed to load"
             result_list.append(rlt)
             continue
 
         if img is None:
-            print('failed to load image: ' + imgpath)
-
+            print('failed to load image: ' + fullpath)
             rlt["message"] = "failed to load"
             result_list.append(rlt)
             continue
@@ -97,7 +108,6 @@ def main(img_list_fn,
                 rlt['faces'].append(tmp)
 
             rlt['face_count'] = len(bboxes)
-
         rlt['message'] = 'success'
         result_list.append(rlt)
 
@@ -136,13 +146,16 @@ def main(img_list_fn,
 if __name__ == "__main__":
     print_usage()
 
-    img_list_fn = "./imglist.txt"
-    save_dir = './fd_rlt'
+#    lfw_list_fn = "./lfw_list_part.txt"
+    lfw_list_fn = "lfw_list_mtcnn.txt"
+    save_dir = './lfw_rlt'
+    # lfw_root = '/disk2/data/FACE/LFW'
+    lfw_root = r'C:\zyf\dataset\lfw'
 
     print(sys.argv)
 
     if len(sys.argv) > 1:
-        img_list_fn = sys.argv[1]
+        lfw_list_fn = sys.argv[1]
 
     if len(sys.argv) > 2:
         save_dir = sys.argv[2]
@@ -150,4 +163,4 @@ if __name__ == "__main__":
     if len(sys.argv) > 3:
         show_img = not(not(sys.argv[3]))
 
-    main(img_list_fn, save_dir, show_img=False)
+    main(lfw_list_fn, lfw_root, save_dir, save_img=False, show_img=False)

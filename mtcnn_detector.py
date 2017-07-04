@@ -267,7 +267,7 @@ def detect_face(detector, cv_img, minsize, threshold, factor):
     # #print("-->PNet outputs #total_boxes = %d" % n_boxes)
 
     if n_boxes < 1:
-        return (None, None)
+        return ([], [])
 
     # 1.2 run NMS
     t1 = time.clock()
@@ -280,7 +280,7 @@ def detect_face(detector, cv_img, minsize, threshold, factor):
     n_boxes = len(pick)
     #print("-->First NMS outputs %d boxes" % n_boxes )
     if n_boxes < 1:
-        return (None, None)
+        return ([], [])
 
     total_boxes = total_boxes[pick, :]
 
@@ -340,7 +340,7 @@ def detect_face(detector, cv_img, minsize, threshold, factor):
     # #print("-->RNet outputs #total_boxes = %d" % n_boxes)
 
     if n_boxes < 1:
-        return (None, None)
+        return ([], [])
 
     scores = np.array([scores[pass_t]]).T
     total_boxes = np.concatenate((total_boxes[pass_t, 0:4], scores), axis=1)
@@ -357,7 +357,7 @@ def detect_face(detector, cv_img, minsize, threshold, factor):
     #print("-->Second NMS outputs %d boxes" % n_boxes )
 
     if n_boxes < 1:
-        return (None, None)
+        return ([], [])
 
     total_boxes = total_boxes[pick, :]
     total_boxes = bbox_reg(total_boxes, reg_factors[:, pick])
@@ -399,7 +399,7 @@ def detect_face(detector, cv_img, minsize, threshold, factor):
     # #print("-->ONet outputs #total_boxes = %d" % n_boxes)
 
     if n_boxes < 1:
-        return (None, None)
+        return ([], [])
 
     points = points[pass_t, :]
     scores = np.array([scores[pass_t]]).T
@@ -428,12 +428,12 @@ def detect_face(detector, cv_img, minsize, threshold, factor):
     #print("-->Third NMS outputs %d boxes" % n_boxes )
 
     if n_boxes < 1:
-        return (None, None)
+        return ([], [])
 
     total_boxes = total_boxes[pick, :]
     points = points[pick, :]
 
-    return total_boxes, points
+    return total_boxes.tolist(), points.tolist()
 
 def get_detector(caffe_model_path):
     #    minsize = 20
