@@ -25,7 +25,7 @@ def bbox_reg(bbox, reg):
 
     # calibrate bouding boxes
     if reg.shape[1] == 1:
-        print("reshape of reg")
+        #print("reshape of reg")
         pass  # reshape of reg
 
     w = bbox[:, 2] - bbox[:, 0] + 1
@@ -37,15 +37,15 @@ def bbox_reg(bbox, reg):
     bb3 = bbox[:, 3] + reg[:, 3] * h
 
     bbox[:, 0:4] = np.array([bb0, bb1, bb2, bb3]).T
-    # print "bb", bbox
+    # #print "bb", bbox
     return bbox
 
 
 def pad(boxesA, w, h):
     boxes = boxesA.copy()  # shit, value parameter!!!
 
-    # print 'boxes', boxes
-    # print 'w,h', w, h
+    # #print 'boxes', boxes
+    # #print 'w,h', w, h
 
     tmph = boxes[:, 3] - boxes[:, 1] + 1
     tmpw = boxes[:, 2] - boxes[:, 0] + 1
@@ -54,8 +54,8 @@ def pad(boxesA, w, h):
     tmph = tmph.astype(np.int32)
     tmpw = tmpw.astype(np.int32)
 
-    # print 'tmph', tmph
-    # print 'tmpw', tmpw
+    # #print 'tmph', tmph
+    # #print 'tmpw', tmpw
 
     dx = np.ones(n_boxes, np.int32)
     dy = np.ones(n_boxes, np.int32)
@@ -97,16 +97,16 @@ def pad(boxesA, w, h):
     ey = np.maximum(0, ey - 1)
     ex = np.maximum(0, ex - 1)
 
-    # print "dy"  ,dy
-    # print "dx"  ,dx
-    # print "y "  ,y
-    # print "x "  ,x
-    # print "edy" ,edy
-    # print "edx" ,edx
-    # print "ey"  ,ey
-    # print "ex"  ,ex
+    # #print "dy"  ,dy
+    # #print "dx"  ,dx
+    # #print "y "  ,y
+    # #print "x "  ,x
+    # #print "edy" ,edy
+    # #print "edx" ,edx
+    # #print "ey"  ,ey
+    # #print "ex"  ,ex
 
-    # print 'boxes', boxes
+    # #print 'boxes', boxes
     return [dy, edy, dx, edx, y, ey, x, ex, tmpw, tmph]
 
 
@@ -116,10 +116,10 @@ def convert_to_squares(bboxA):
     h = bboxA[:, 3] - bboxA[:, 1]
     l = np.maximum(w, h).T
 
-    # print 'bboxA', bboxA
-    # print 'w', w
-    # print 'h', h
-    # print 'l', l
+    # #print 'bboxA', bboxA
+    # #print 'w', w
+    # #print 'h', h
+    # #print 'l', l
     bboxA[:, 0] = bboxA[:, 0] + w * 0.5 - l * 0.5
     bboxA[:, 1] = bboxA[:, 1] + h * 0.5 - l * 0.5
     bboxA[:, 2:4] = bboxA[:, 0:2] + np.repeat([l], 2, axis=0).T
@@ -196,9 +196,9 @@ def generate_bboxes(scores_map, reg, scale, t):
 
     bbox_out = np.concatenate((bb1, bb2, scores, reg), axis=0)
 
-    # print '(x,y)',x,y
-    # print 'scores', scores
-    # print 'reg', reg
+    # #print '(x,y)',x,y
+    # #print 'scores', scores
+    # #print 'reg', reg
 
     return bbox_out.T
 
@@ -261,10 +261,10 @@ def detect_face(detector, cv_img, minsize, threshold, factor):
             total_boxes = np.concatenate((total_boxes, boxes), axis=0)
 
     t2 = time.clock()
-    print("-->PNet cost %f seconds, processed %d pyramid scales" % ((t2-t1), len(scales)) )
+    #print("-->PNet cost %f seconds, processed %d pyramid scales" % ((t2-t1), len(scales)) )
 
     n_boxes = total_boxes.shape[0]
-    # print("-->PNet outputs #total_boxes = %d" % n_boxes)
+    # #print("-->PNet outputs #total_boxes = %d" % n_boxes)
 
     if n_boxes < 1:
         return (None, None)
@@ -275,10 +275,10 @@ def detect_face(detector, cv_img, minsize, threshold, factor):
     pick = nms(total_boxes, 0.7, 'Union')
 
     t2 = time.clock()
-    print("-->First NMS cost %f seconds, processed %d boxes" % ((t2-t1), n_boxes) )
+    #print("-->First NMS cost %f seconds, processed %d boxes" % ((t2-t1), n_boxes) )
 
     n_boxes = len(pick)
-    print("-->First NMS outputs %d boxes" % n_boxes )
+    #print("-->First NMS outputs %d boxes" % n_boxes )
     if n_boxes < 1:
         return (None, None)
 
@@ -311,15 +311,15 @@ def detect_face(detector, cv_img, minsize, threshold, factor):
     for k in range(n_boxes):
         tmp = np.zeros((int(tmph[k]), int(tmpw[k]), 3))
 
-        # print "dx[k], edx[k]:", dx[k], edx[k]
-        # print "dy[k], edy[k]:", dy[k], edy[k]
-        # print "img.shape", img[y[k]:ey[k]+1, x[k]:ex[k]+1].shape
-        # print "tmp.shape", tmp[dy[k]:edy[k]+1, dx[k]:edx[k]+1].shape
+        # #print "dx[k], edx[k]:", dx[k], edx[k]
+        # #print "dy[k], edy[k]:", dy[k], edy[k]
+        # #print "img.shape", img[y[k]:ey[k]+1, x[k]:ex[k]+1].shape
+        # #print "tmp.shape", tmp[dy[k]:edy[k]+1, dx[k]:edx[k]+1].shape
 
         tmp[dy[k]:edy[k] + 1, dx[k]:edx[k] +
             1] = img[y[k]:ey[k] + 1, x[k]:ex[k] + 1]
-        # print "y,ey,x,ex", y[k], ey[k], x[k], ex[k]
-        # print "tmp", tmp.shape
+        # #print "y,ey,x,ex", y[k], ey[k], x[k], ex[k]
+        # #print "tmp", tmp.shape
 
         tmp_img[k, :, :, :] = cv2.resize(tmp, (24, 24))
 
@@ -334,10 +334,10 @@ def detect_face(detector, cv_img, minsize, threshold, factor):
     pass_t = np.where(scores > threshold[1])[0]
 
     t2 = time.clock()
-    print("-->RNet cost %f seconds, processed %d boxes, avg time: %f seconds" % ((t2-t1), n_boxes, (t2-t1)/n_boxes) )
+    #print("-->RNet cost %f seconds, processed %d boxes, avg time: %f seconds" % ((t2-t1), n_boxes, (t2-t1)/n_boxes) )
 
     n_boxes = pass_t.shape[0]
-    # print("-->RNet outputs #total_boxes = %d" % n_boxes)
+    # #print("-->RNet outputs #total_boxes = %d" % n_boxes)
 
     if n_boxes < 1:
         return (None, None)
@@ -351,10 +351,10 @@ def detect_face(detector, cv_img, minsize, threshold, factor):
     pick = nms(total_boxes, 0.7, 'Union')
     t2 = time.clock()
 
-    print("-->Second NMS cost %f seconds, processed %d boxes" % ((t2-t1), n_boxes) )
+    #print("-->Second NMS cost %f seconds, processed %d boxes" % ((t2-t1), n_boxes) )
 
     n_boxes = len(pick)
-    print("-->Second NMS outputs %d boxes" % n_boxes )
+    #print("-->Second NMS outputs %d boxes" % n_boxes )
 
     if n_boxes < 1:
         return (None, None)
@@ -393,10 +393,10 @@ def detect_face(detector, cv_img, minsize, threshold, factor):
     pass_t = np.where(scores > threshold[2])[0]
 
     t2 = time.clock()
-    print("-->ONet cost %f seconds, processed %d boxes, avg time: %f seconds" % ((t2-t1), n_boxes, (t2-t1)/n_boxes ))
+    #print("-->ONet cost %f seconds, processed %d boxes, avg time: %f seconds" % ((t2-t1), n_boxes, (t2-t1)/n_boxes ))
 
     n_boxes = pass_t.shape[0]
-    # print("-->ONet outputs #total_boxes = %d" % n_boxes)
+    # #print("-->ONet outputs #total_boxes = %d" % n_boxes)
 
     if n_boxes < 1:
         return (None, None)
@@ -405,7 +405,7 @@ def detect_face(detector, cv_img, minsize, threshold, factor):
     scores = np.array([scores[pass_t]]).T
     total_boxes = np.concatenate(
         (total_boxes[pass_t, 0:4], scores), axis=1)
-#            print "[9]:", total_boxes.shape[0]
+#            #print "[9]:", total_boxes.shape[0]
 
     reg_factors = out['conv6-2'][pass_t, :].T
     w = total_boxes[:, 3] - total_boxes[:, 1] + 1
@@ -422,10 +422,10 @@ def detect_face(detector, cv_img, minsize, threshold, factor):
     pick = nms(total_boxes, 0.7, 'Min')
     t2 = time.clock()
 
-    print("-->Third NMS cost %f seconds, processed %d boxes" % ((t2-t1), n_boxes) )
+    #print("-->Third NMS cost %f seconds, processed %d boxes" % ((t2-t1), n_boxes) )
 
     n_boxes = len(pick)
-    print("-->Third NMS outputs %d boxes" % n_boxes )
+    #print("-->Third NMS outputs %d boxes" % n_boxes )
 
     if n_boxes < 1:
         return (None, None)

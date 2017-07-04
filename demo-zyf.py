@@ -9,6 +9,7 @@ import cv2
 import numpy as np
 
 import time
+import json
 
 from mtcnn_detector import mtcnn_detector, draw_faces
 
@@ -16,7 +17,7 @@ def print_usage():
     usage = 'python %s <img-list-file> <save-dir>' % osp.basename(__file__)
     print('USAGE: ' + usage)
 
-def main(imglistfile,
+def main(img_list_fn,
          save_dir,
          show_img = False):
 
@@ -28,12 +29,16 @@ def main(imglistfile,
     if not osp.exists(save_dir):
         os.makedirs(save_dir)
 
+    fp_rlt = open(osp.join(save_dir, 'fd_rlt.json'), 'w')
+
+    result_list = []
+
     t1 = time.clock()
     detector = mtcnn_detector(caffe_model_path)
     t2 = time.clock()
     print("initFaceDetector() costs %f seconds" % (t2 - t1))
 
-    fp = open(imglistfile, 'r')
+    fp = open(img_list_fn, 'r')
 
     ttl_time = 0.0
     img_cnt = 0
@@ -41,13 +46,22 @@ def main(imglistfile,
     for line in fp:
         imgpath = line.strip()
         print("\n===>" + imgpath)
+
+        rlt = {}
+        rlt["filename"] = imgpath
+        rlt["faces"] = []
+
         try:
             img = cv2.imread(imgpath)
         except:
             print('failed to load image: ' + imgpath)
+            rlt["message"] = "failed to load"
+            result_list.append(rlt)
             continue
 
         if img is None:
+            rlt["message"] = "failed to load"
+            result_list.append(rlt)
             continue
 
         img_cnt += 1
@@ -59,6 +73,19 @@ def main(imglistfile,
         t2 = time.clock()
         ttl_time += t2 - t1
         print("detect_face() costs %f seconds" % (t2 - t1))
+
+
+        for (box, pts) in zip(bboxes, points):
+            box = box.tolist()
+            pts = pts.tolist()
+            tmp = { 'rect': box[0:4],
+                    'score': box[4],
+                    'pts': pts
+                    }
+            rlt['faces'].append(tmp)
+
+        rlt['message'] = 'success'
+        result_list.append(rlt)
 
 #        print('output bboxes: ' + str(bboxes))
 #        print('output points: ' + str(points))
@@ -82,6 +109,8 @@ def main(imglistfile,
             if ch == 27:
                 break
 
+    json.dump(result_list, fp_rlt, indent=4)
+    fp_rlt.close()
     fp.close()
 
     if show_img:
@@ -91,14 +120,14 @@ def main(imglistfile,
 if __name__ == "__main__":
     print_usage()
 
-    imglistfile = "./imglist.txt"
-    save_dir = './fd_rlt3'
-    show_img = True
+    img_list_fn = "./imglist.txt"
+    save_dir = './fd_rlt'
+    show_img = False
 
     print(sys.argv)
 
     if len(sys.argv)>1:
-        imglistfile = sys.argv[1]
+        img_list_fn = sys.argv[1]
 
     if len(sys.argv)>2:
         save_dir = sys.argv[2]
@@ -106,4 +135,4 @@ if __name__ == "__main__":
     if len(sys.argv)>3:
         show_img = not(not(sys.argv[3]))
 
-    main(imglistfile, save_dir, show_img)
+    main(img_list_fn, save_dir, show_img)
