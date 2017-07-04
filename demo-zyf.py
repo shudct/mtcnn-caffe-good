@@ -19,6 +19,7 @@ def print_usage():
 
 def main(img_list_fn,
          save_dir,
+         save_img = True,
          show_img = False):
 
     minsize = 20
@@ -46,6 +47,13 @@ def main(img_list_fn,
     for line in fp:
         imgpath = line.strip()
         print("\n===>" + imgpath)
+        if imgpath=='':
+            print 'empty line, not a file name, skip to next'
+            continue
+        if imgpath[0]=='#':
+            print 'skip line starts with #, skip to next'
+            continue
+            
 
         rlt = {}
         rlt["filename"] = imgpath
@@ -94,13 +102,15 @@ def main(img_list_fn,
         if bboxes is None:
             continue
 
-        draw_faces(img, bboxes, points)
-
         print("\n===> Processed %d images, costs %f seconds, avg time: %f seconds" % (
             img_cnt, ttl_time, ttl_time / img_cnt))
+     
+        if save_img or show_img:
+            draw_faces(img, bboxes, points)
 
-        save_name = osp.join(save_dir, osp.basename(imgpath))
-        cv2.imwrite(save_name, img)
+        if save_img:
+            save_name = osp.join(save_dir, osp.basename(imgpath))
+            cv2.imwrite(save_name, img)
 
         if show_img:
             cv2.imshow('img', img)
@@ -122,7 +132,6 @@ if __name__ == "__main__":
 
     img_list_fn = "./imglist.txt"
     save_dir = './fd_rlt'
-    show_img = False
 
     print(sys.argv)
 
@@ -135,4 +144,4 @@ if __name__ == "__main__":
     if len(sys.argv)>3:
         show_img = not(not(sys.argv[3]))
 
-    main(img_list_fn, save_dir, show_img)
+    main(img_list_fn, save_dir, show_img=False)
