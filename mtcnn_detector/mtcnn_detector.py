@@ -465,7 +465,7 @@ def draw_faces(img, bboxes, points=None):
                     points[i][j + 5])), 2, (0, 0, 255), 1, -1)
 
 
-class mtcnn_detector:
+class MtcnnDetector:
     def __init__(self, caffe_model_path):
         self.detector = get_detector(caffe_model_path)
 
@@ -480,9 +480,9 @@ if __name__ == "__main__":
     show_img = True
 
     save_dir = './fd_rlt'
-    imgpath = "./girls.jpg"
+    imgpath = "../test_imgs/girls.jpg"
 
-    caffe_model_path = "./model"
+    caffe_model_path = "../model"
 
     minsize = 20
     threshold = [0.6, 0.7, 0.7]
@@ -490,7 +490,7 @@ if __name__ == "__main__":
 
     img = cv2.imread(imgpath)
 
-    detector = mtcnn_detector(caffe_model_path)
+    detector = MtcnnDetector(caffe_model_path)
     bboxes, points = detector.detect_face(img, minsize,
                                           threshold, scale_factor)
 

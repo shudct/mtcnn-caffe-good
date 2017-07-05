@@ -11,7 +11,7 @@ import numpy as np
 import time
 import json
 
-from mtcnn_detector import mtcnn_detector, draw_faces
+from mtcnn_detector import MtcnnDetector, draw_faces
 
 
 def print_usage():
@@ -19,10 +19,9 @@ def print_usage():
     print('USAGE: ' + usage)
 
 
-def main(lfw_list_fn,
-         lfw_root,
+def main(img_list_fn,
          save_dir,
-         save_img=False,
+         save_img=True,
          show_img=False):
 
     minsize = 20
@@ -33,16 +32,16 @@ def main(lfw_list_fn,
     if not osp.exists(save_dir):
         os.makedirs(save_dir)
 
-    fp_rlt = open(osp.join(save_dir, 'lfw_mtcnn_fd_rlt.json'), 'w')
+    fp_rlt = open(osp.join(save_dir, 'mtcnn_fd_rlt.json'), 'w')
 
     result_list = []
 
     t1 = time.clock()
-    detector = mtcnn_detector(caffe_model_path)
+    detector = MtcnnDetector(caffe_model_path)
     t2 = time.clock()
     print("initFaceDetector() costs %f seconds" % (t2 - t1))
 
-    fp = open(lfw_list_fn, 'r')
+    fp = open(img_list_fn, 'r')
 
     ttl_time = 0.0
     img_cnt = 0
@@ -57,32 +56,22 @@ def main(lfw_list_fn,
             print 'skip line starts with #, skip to next'
             continue
 
-        splits = imgpath.split()
-        imgpath = splits[0]
-
-        id = 'unkown' if len(splits) < 2 else splits[1]
-
-        if not imgpath.startswith('/'):
-            fullpath = osp.join(lfw_root, imgpath)
-        else:
-            fullpath = imgpath
-
         rlt = {}
         rlt["filename"] = imgpath
         rlt["faces"] = []
         rlt['face_count'] = 0
-        rlt['id'] = id
 
         try:
-            img = cv2.imread(fullpath)
+            img = cv2.imread(imgpath)
         except:
-            print('failed to load image: ' + fullpath)
+            print('failed to load image: ' + imgpath)
             rlt["message"] = "failed to load"
             result_list.append(rlt)
             continue
 
         if img is None:
-            print('failed to load image: ' + fullpath)
+            print('failed to load image: ' + imgpath)
+
             rlt["message"] = "failed to load"
             result_list.append(rlt)
             continue
@@ -97,7 +86,7 @@ def main(lfw_list_fn,
         ttl_time += t2 - t1
         print("detect_face() costs %f seconds" % (t2 - t1))
 
-        if len(bboxes)>0:
+        if bboxes is not None and len(bboxes)>0:
             for (box, pts) in zip(bboxes, points):
 #                box = box.tolist()
 #                pts = pts.tolist()
@@ -108,6 +97,7 @@ def main(lfw_list_fn,
                 rlt['faces'].append(tmp)
 
             rlt['face_count'] = len(bboxes)
+
         rlt['message'] = 'success'
         result_list.append(rlt)
 
@@ -115,11 +105,12 @@ def main(lfw_list_fn,
 #        print('output points: ' + str(points))
         # toc()
 
+        print("\n===> Processed %d images, costs %f seconds, avg time: %f seconds" % (
+            img_cnt, ttl_time, ttl_time / img_cnt))
+
         if bboxes is None:
             continue
 
-        print("\n===> Processed %d images, costs %f seconds, avg time: %f seconds" % (
-            img_cnt, ttl_time, ttl_time / img_cnt))
 
         if save_img or show_img:
             draw_faces(img, bboxes, points)
@@ -146,16 +137,13 @@ def main(lfw_list_fn,
 if __name__ == "__main__":
     print_usage()
 
-#    lfw_list_fn = "./lfw_list_part.txt"
-    lfw_list_fn = "lfw_list_mtcnn.txt"
-    save_dir = './lfw_rlt'
-    # lfw_root = '/disk2/data/FACE/LFW'
-    lfw_root = r'C:\zyf\dataset\lfw'
+    img_list_fn = "./list_img.txt"
+    save_dir = './fd_rlt4'
 
     print(sys.argv)
 
     if len(sys.argv) > 1:
-        lfw_list_fn = sys.argv[1]
+        img_list_fn = sys.argv[1]
 
     if len(sys.argv) > 2:
         save_dir = sys.argv[2]
@@ -163,4 +151,4 @@ if __name__ == "__main__":
     if len(sys.argv) > 3:
         show_img = not(not(sys.argv[3]))
 
-    main(lfw_list_fn, lfw_root, save_dir, save_img=False, show_img=False)
+    main(img_list_fn, save_dir, show_img=False)
