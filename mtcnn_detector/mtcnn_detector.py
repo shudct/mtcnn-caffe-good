@@ -72,69 +72,44 @@ def bbox_reg(bbox, reg):
 def pad(boxesA, w, h):
     boxes = boxesA.copy()  # shit, value parameter!!!
 
-    # #print 'boxes', boxes
-    # #print 'w,h', w, h
-
-    tmph = boxes[:, 3] - boxes[:, 1] + 1
     tmpw = boxes[:, 2] - boxes[:, 0] + 1
+    tmph = boxes[:, 3] - boxes[:, 1] + 1
     n_boxes = boxes.shape[0]
 
-    tmph = tmph.astype(np.int32)
     tmpw = tmpw.astype(np.int32)
+    tmph = tmph.astype(np.int32)
 
-    # #print 'tmph', tmph
-    # #print 'tmpw', tmpw
+    dx = np.zeros(n_boxes, np.int32)
+    dy = np.zeros(n_boxes, np.int32)
+    edx = tmpw - 1
+    edy = tmph - 1
 
-    dx = np.ones(n_boxes, np.int32)
-    dy = np.ones(n_boxes, np.int32)
-    edx = tmpw
-    edy = tmph
+    x = (boxes[:, 0]).astype(np.int32)
+    y = (boxes[:, 1]).astype(np.int32)
+    ex = (boxes[:, 2]).astype(np.int32)
+    ey = (boxes[:, 3]).astype(np.int32)
 
-    x = (boxes[:, 0:1][:, 0]).astype(np.int32)
-    y = (boxes[:, 1:2][:, 0]).astype(np.int32)
-    ex = (boxes[:, 2:3][:, 0]).astype(np.int32)
-    ey = (boxes[:, 3:4][:, 0]).astype(np.int32)
+    tmp = np.where(ex > w - 1)[0]
 
-    tmp = np.where(ex > w)[0]
     if tmp.shape[0] != 0:
-        edx[tmp] = -ex[tmp] + w - 1 + tmpw[tmp]
+        edx[tmp] = -ex[tmp] + w - 1 + tmpw[tmp] - 1
         ex[tmp] = w - 1
 
-    tmp = np.where(ey > h)[0]
+    tmp = np.where(ey > h - 1)[0]
     if tmp.shape[0] != 0:
-        edy[tmp] = -ey[tmp] + h - 1 + tmph[tmp]
+        edy[tmp] = -ey[tmp] + h - 1 + tmph[tmp] - 1
         ey[tmp] = h - 1
 
-    tmp = np.where(x < 1)[0]
+    tmp = np.where(x < 0)[0]
     if tmp.shape[0] != 0:
-        dx[tmp] = 2 - x[tmp]
-        x[tmp] = np.ones_like(x[tmp])
+        dx[tmp] = -x[tmp]
+        x[tmp] = np.zeros_like(x[tmp])
 
-    tmp = np.where(y < 1)[0]
+    tmp = np.where(y < 0)[0]
     if tmp.shape[0] != 0:
-        dy[tmp] = 2 - y[tmp]
-        y[tmp] = np.ones_like(y[tmp])
+        dy[tmp] = - y[tmp]
+        y[tmp] = np.zeros_like(y[tmp])
 
-    # for python index from 0, while matlab from 1
-    dy = np.maximum(0, dy - 1)
-    dx = np.maximum(0, dx - 1)
-    y = np.maximum(0, y - 1)
-    x = np.maximum(0, x - 1)
-    edy = np.maximum(0, edy - 1)
-    edx = np.maximum(0, edx - 1)
-    ey = np.maximum(0, ey - 1)
-    ex = np.maximum(0, ex - 1)
-
-    # #print "dy"  ,dy
-    # #print "dx"  ,dx
-    # #print "y "  ,y
-    # #print "x "  ,x
-    # #print "edy" ,edy
-    # #print "edx" ,edx
-    # #print "ey"  ,ey
-    # #print "ex"  ,ex
-
-    # #print 'boxes', boxes
     return [dy, edy, dx, edx, y, ey, x, ex, tmpw, tmph]
 
 
@@ -154,7 +129,7 @@ def convert_to_squares(bboxA):
     return bboxA
 
 
-def nms(boxes, threshold, type):
+def nms(boxes, threshold=0.7, type='Union'):
     """nms
     :boxes: [:,0:5]
     :threshold: 0.5 like
@@ -217,28 +192,24 @@ def generate_bboxes(scores_map, reg, scale, t):
     bbox = np.array([yy, xx]).T
 
     # matlab index from 1, so with "bbox-1"
-    bb1 = np.fix((stride * (bbox) + 1) / scale).T
-    bb2 = np.fix((stride * (bbox) + cellsize - 1 + 1) /
-                 scale).T  # while python don't have to
+#    bb1 = np.fix((stride * (bbox) + 1) / scale).T
+#    bb2 = np.fix((stride * (bbox) + cellsize - 1 + 1) /
+#                 scale).T  # while python don't have to
+    bb1 = np.fix((stride * bbox ) / scale).T
+    bb2 = np.fix((stride * bbox + cellsize - 1) / scale).T
     scores = np.array([scores])
 
     bbox_out = np.concatenate((bb1, bb2, scores, reg), axis=0)
 
-    # #print '(x,y)',x,y
-    # #print 'scores', scores
-    # #print 'reg', reg
-
     return bbox_out.T
 
 
-def detect_face(detector, cv_img, minsize, threshold, factor):
-    if len(detector)==4:
+def detect_face(detector, cv_img, minsize=20, threshold=[0.6, 0.7, 0.7], factor=0.709):
+    if len(detector) == 4:
         PNet, RNet, ONet, LNet = detector
     else:
         PNet, RNet, ONet = detector
         LNet = None
-
-#    print LNet
 
     img = cv_img.copy()
     img = preprocess_cvimg(img)
@@ -264,7 +235,7 @@ def detect_face(detector, cv_img, minsize, threshold, factor):
     ###############
     # First stage
     ###############
-    # t1 = time.clock()
+    #t1 = time.clock()
 
     # 1.1 run PNet
     for scale in scales:
@@ -285,7 +256,7 @@ def detect_face(detector, cv_img, minsize, threshold, factor):
             continue
 
         if boxes.shape[0] > 0:
-            pick = nms(boxes, 0.5, 'Union')
+            pick = nms(boxes, 0.7, 'Union')
 
             if len(pick) > 0:
                 boxes = boxes[pick, :]
@@ -294,7 +265,7 @@ def detect_face(detector, cv_img, minsize, threshold, factor):
 
             total_boxes = np.concatenate((total_boxes, boxes), axis=0)
 
-    # t2 = time.clock()
+    #t2 = time.clock()
     #print("-->PNet cost %f seconds, processed %d pyramid scales" % ((t2-t1), len(scales)) )
 
     n_boxes = total_boxes.shape[0]
@@ -304,11 +275,11 @@ def detect_face(detector, cv_img, minsize, threshold, factor):
         return ([], [])
 
     # 1.2 run NMS
-    # t1 = time.clock()
+    #t1 = time.clock()
 
     pick = nms(total_boxes, 0.7, 'Union')
 
-    # t2 = time.clock()
+    #t2 = time.clock()
     #print("-->First NMS cost %f seconds, processed %d boxes" % ((t2-t1), n_boxes) )
 
     n_boxes = len(pick)
@@ -338,22 +309,13 @@ def detect_face(detector, cv_img, minsize, threshold, factor):
     ###############
     # Second stage
     ###############
-    # t1 = time.clock()
+    #t1 = time.clock()
 
     # 2.1 construct input for RNet
     tmp_img = np.zeros((n_boxes, 24, 24, 3))  # (24, 24, 3, n_boxes)
     for k in range(n_boxes):
         tmp = np.zeros((int(tmph[k]), int(tmpw[k]), 3))
-
-        # #print "dx[k], edx[k]:", dx[k], edx[k]
-        # #print "dy[k], edy[k]:", dy[k], edy[k]
-        # #print "img.shape", img[y[k]:ey[k]+1, x[k]:ex[k]+1].shape
-        # #print "tmp.shape", tmp[dy[k]:edy[k]+1, dx[k]:edx[k]+1].shape
-
-        tmp[dy[k]:edy[k] + 1, dx[k]:edx[k] +
-            1] = img[y[k]:ey[k] + 1, x[k]:ex[k] + 1]
-        # #print "y,ey,x,ex", y[k], ey[k], x[k], ex[k]
-        # #print "tmp", tmp.shape
+        tmp[dy[k]:edy[k] + 1, dx[k]:edx[k] + 1] = img[y[k]:ey[k] + 1, x[k]:ex[k] + 1]
 
         tmp_img[k, :, :, :] = cv2.resize(tmp, (24, 24))
 
@@ -367,11 +329,11 @@ def detect_face(detector, cv_img, minsize, threshold, factor):
     scores = out['prob1'][:, 1]
     pass_t = np.where(scores > threshold[1])[0]
 
-    # t2 = time.clock()
+    #t2 = time.clock()
     #print("-->RNet cost %f seconds, processed %d boxes, avg time: %f seconds" % ((t2-t1), n_boxes, (t2-t1)/n_boxes) )
 
     n_boxes = pass_t.shape[0]
-    # #print("-->RNet outputs #total_boxes = %d" % n_boxes)
+    #print("-->RNet outputs #total_boxes = %d" % n_boxes)
 
     if n_boxes < 1:
         return ([], [])
@@ -381,9 +343,9 @@ def detect_face(detector, cv_img, minsize, threshold, factor):
     reg_factors = out['conv5-2'][pass_t, :].T
 
     # 2.3 NMS
-    # t1 = time.clock()
+    #t1 = time.clock()
     pick = nms(total_boxes, 0.7, 'Union')
-    # t2 = time.clock()
+    #t2 = time.clock()
 
     #print("-->Second NMS cost %f seconds, processed %d boxes" % ((t2-t1), n_boxes) )
 
@@ -398,7 +360,7 @@ def detect_face(detector, cv_img, minsize, threshold, factor):
     total_boxes = convert_to_squares(total_boxes)
 
     ###############
-    # Third stage
+    #third stage
     ###############
 
     # 3.1 construct input for ONet
@@ -415,7 +377,7 @@ def detect_face(detector, cv_img, minsize, threshold, factor):
 #            tmp_img = (tmp_img - 127.5) * 0.0078125  # [0,255] -> [-1,1]
 
     # 3.2 run ONet
-    # t1 = time.clock()
+    #t1 = time.clock()
 
     tmp_img = np.swapaxes(tmp_img, 1, 3)
     ONet.blobs['data'].reshape(n_boxes, 3, 48, 48)
@@ -426,11 +388,11 @@ def detect_face(detector, cv_img, minsize, threshold, factor):
     points = out['conv6-3']
     pass_t = np.where(scores > threshold[2])[0]
 
-    # t2 = time.clock()
+    #t2 = time.clock()
     #print("-->ONet cost %f seconds, processed %d boxes, avg time: %f seconds" % ((t2-t1), n_boxes, (t2-t1)/n_boxes ))
 
     n_boxes = pass_t.shape[0]
-    # #print("-->ONet outputs #total_boxes = %d" % n_boxes)
+    #print("-->ONet outputs #total_boxes = %d" % n_boxes)
 
     if n_boxes < 1:
         return ([], [])
@@ -446,15 +408,15 @@ def detect_face(detector, cv_img, minsize, threshold, factor):
     boxes_h = total_boxes[:, 2] - total_boxes[:, 0] + 1
 
     points[:, 0:5] = np.tile(boxes_w, (5, 1)).T * points[:, 0:5] \
-                     + np.tile(total_boxes[:, 0], (5, 1)).T - 1
+        + np.tile(total_boxes[:, 0], (5, 1)).T - 1
     points[:, 5:10] = np.tile(boxes_h, (5, 1)).T * points[:, 5:10] \
-                      + np.tile(total_boxes[:, 1], (5, 1)).T - 1
+        + np.tile(total_boxes[:, 1], (5, 1)).T - 1
 
-    total_boxes = bbox_reg(total_boxes, reg_factors[:, :])
+    total_boxes = bbox_reg(total_boxes, reg_factors)
 
-    # t1 = time.clock()
+    #t1 = time.clock()
     pick = nms(total_boxes, 0.7, 'Min')
-    # t2 = time.clock()
+    #t2 = time.clock()
 
     #print("-->Third NMS cost %f seconds, processed %d boxes" % ((t2-t1), n_boxes) )
 
@@ -472,32 +434,34 @@ def detect_face(detector, cv_img, minsize, threshold, factor):
     ###############
     if LNet is not None:
         # 4.1 construct input for LNet
-#        total_boxes = np.fix(total_boxes)
-        patchw = np.maximum(total_boxes[:, 2]-total_boxes[:, 0]+1,
-                            total_boxes[:, 3]-total_boxes[:, 1]+1)
-        patchw = np.round(patchw*0.25)
+        #        total_boxes = np.fix(total_boxes)
+        patchw = np.maximum(total_boxes[:, 2] - total_boxes[:, 0] + 1,
+                            total_boxes[:, 3] - total_boxes[:, 1] + 1)
+        patchw = np.round(patchw * 0.25)
 
         # make it even
-        patchw[np.where(np.mod(patchw,2) == 1)] += 1
+        patchw[np.where(np.mod(patchw, 2) == 1)] += 1
 
         pointx = np.zeros((n_boxes, 5))
         pointy = np.zeros((n_boxes, 5))
 
         tmp_img = np.zeros((n_boxes, 15, 24, 24), dtype=np.float32)
         for i in range(5):
-            x, y = points[:, i], points[:, i+5]
-            x, y = np.round(x-0.5*patchw), np.round(y-0.5*patchw)
+            x, y = points[:, i], points[:, i + 5]
+            x, y = np.round(x - 0.5 * patchw), np.round(y - 0.5 * patchw)
             [dy, edy, dx, edx, y, ey, x, ex, tmpw, tmph] = pad(
-                            np.vstack([x, y, x+patchw-1, y+patchw-1]).T,
-                            w, h)
+                np.vstack([x, y, x + patchw - 1, y + patchw - 1]).T,
+                w, h)
 
             for j in range(n_boxes):
                 tmpim = np.zeros((tmpw[j], tmpw[j], 3), dtype=np.float32)
-                tmpim[dy[j]:edy[j]+1, dx[j]:edx[j]+1, :] = img[y[j]:ey[j]+1, x[j]:ex[j]+1, :]
-                tmp_img[j, i*3:i*3+3, :, :] = adjust_input(cv2.resize(tmpim, (24, 24)))
+                tmpim[dy[j]:edy[j] + 1, dx[j]:edx[j] + 1,
+                      :] = img[y[j]:ey[j] + 1, x[j]:ex[j] + 1, :]
+                tmp_img[j, i * 3:i * 3 + 3, :,
+                        :] = adjust_input(cv2.resize(tmpim, (24, 24)))
 
         # 4.2 run LNet
-        # t1 = time.clock()
+        #t1 = time.clock()
 
         LNet.blobs['data'].reshape(n_boxes, 15, 24, 24)
         LNet.blobs['data'].data[...] = tmp_img
@@ -507,30 +471,26 @@ def detect_face(detector, cv_img, minsize, threshold, factor):
 
         for k in range(5):
             # do not make a large movement
-            layer_name = 'fc5_' + str(k+1)
-            tmp_index = np.where(np.abs(out[layer_name]-0.5) > 0.35)
+            layer_name = 'fc5_' + str(k + 1)
+            tmp_index = np.where(np.abs(out[layer_name] - 0.5) > 0.35)
             out[layer_name][tmp_index[0]] = 0.5
 
-            pointx[:, k] = np.round(points[:, k] - 0.5*patchw) \
-                          + out[layer_name][:, 0]*patchw
-            pointy[:, k] = np.round(points[:, k+5] - 0.5*patchw) \
-                          + out[layer_name][:, 1]*patchw
+            pointx[:, k] = np.round(points[:, k] - 0.5 * patchw) \
+                + out[layer_name][:, 0] * patchw
+            pointy[:, k] = np.round(points[:, k + 5] - 0.5 * patchw) \
+                + out[layer_name][:, 1] * patchw
 
 #        print('--->LNet output: \n{}'.format(out))
 
         points = np.hstack([pointx, pointy])
 
-        # t2 = time.clock()
+        #t2 = time.clock()
         #print("-->LNet cost %f seconds, processed %d boxes, avg time: %f seconds" % ((t2-t1), n_boxes, (t2-t1)/n_boxes ))
 
     return total_boxes.tolist(), points.tolist()
 
+
 def get_detector(caffe_model_path):
-    #    minsize = 20
-    #     caffe_model_path = "/home/duino/iactive/mtcnn/model"
-    #    threshold = [0.6, 0.7, 0.7]
-    #    factor = 0.709
-    # caffe.set_mode_cpu()
     caffe.set_mode_gpu()
     PNet = caffe.Net(caffe_model_path + "/det1.prototxt",
                      caffe_model_path + "/det1.caffemodel", caffe.TEST)
@@ -544,13 +504,19 @@ def get_detector(caffe_model_path):
 #    return (PNet, RNet, ONet)
     return (PNet, RNet, ONet, LNet)
 
-def draw_faces(img, bboxes, points=None):
+
+def draw_faces(img, bboxes, points=None, draw_score=False):
     if len(bboxes) < 1:
         pass
 
-    for i in range(len(bboxes)):
-        cv2.rectangle(img, (int(bboxes[i][0]), int(bboxes[i][1])), (int(
-            bboxes[i][2]), int(bboxes[i][3])), (0, 255, 0), 1)
+    for i, bbox in enumerate(bboxes):
+        cv2.rectangle(img, (int(bbox[0]), int(bbox[1])), (int(
+            bbox[2]), int(bbox[3])), (0, 255, 0), 1)
+
+        if draw_score:
+            text = '%2.3f' % (bbox[4]*100)
+            cv2_put_text_to_image(img, text, int(bbox[0]), int(bbox[3]) + 5 )
+
 
         if points is not None:
             for j in range(5):
@@ -563,11 +529,12 @@ class MtcnnDetector:
         self.detector = get_detector(caffe_model_path)
 
     def detect_face(self, img, minsize=20,
-                    threshold = [0.6, 0.7, 0.7], factor = 0.709):
+                    threshold=[0.6, 0.7, 0.7], factor=0.709):
         if isinstance(img, str):
             img = cv2.imread(img)
 
         return detect_face(self.detector, img, minsize, threshold, factor)
+
 
 if __name__ == "__main__":
     import os.path as osp
