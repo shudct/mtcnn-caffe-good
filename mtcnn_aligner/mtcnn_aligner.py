@@ -18,6 +18,36 @@ def preprocess_cvimg(cv_img):
     return img
 
 
+def adjust_input(in_data):
+    """
+        adjust the input from (h, w, c) to ( 1, c, h, w) for network input
+
+    Parameters:
+    ----------
+        in_data: numpy array of shape (h, w, c)
+            input data
+    Returns:
+    -------
+        out_data: numpy array of shape (1, c, h, w)
+            reshaped array
+    """
+    if in_data.dtype is not np.dtype('float32'):
+        out_data = in_data.astype(np.float32)
+    else:
+        out_data = in_data
+
+#    print out_data.shape
+#    cv2.imshow('resized', out_data)
+#    cv2.waitKey(0)
+
+#    out_data = (out_data - 127.5)*0.0078125
+
+    out_data = np.expand_dims(out_data, 0)
+    out_data = np.swapaxes(out_data, 1, 3)
+
+    return out_data
+
+
 def bbox_reg(bbox, reg):
     reg = reg.T
 
@@ -202,7 +232,7 @@ def generate_bboxes(scores_map, reg, scale, t):
 
 
 def align_face(aligner, cv_img,  face_rects):
-    RNet, ONet = aligner
+    RNet, ONet, LNet = aligner
 
     if not face_rects:
         return ([], [])
@@ -234,7 +264,7 @@ def align_face(aligner, cv_img,  face_rects):
 #    ###############
 #    # First stage
 #    ###############
-#    t1 = time.clock()
+#    # t1 = time.clock()
 #
 #    # 1.1 run PNet
 #    for scale in scales:
@@ -264,7 +294,7 @@ def align_face(aligner, cv_img,  face_rects):
 #
 #            total_boxes = np.concatenate((total_boxes, boxes), axis=0)
 #
-#    t2 = time.clock()
+#    # t2 = time.clock()
 #    #print("-->PNet cost %f seconds, processed %d pyramid scales" % ((t2-t1), len(scales)) )
 #
 #    n_boxes = total_boxes.shape[0]
@@ -274,11 +304,11 @@ def align_face(aligner, cv_img,  face_rects):
 #        return ([], [])
 #
 #    # 1.2 run NMS
-#    t1 = time.clock()
+#    # t1 = time.clock()
 #
 #    pick = nms(total_boxes, 0.7, 'Union')
 #
-#    t2 = time.clock()
+#    # t2 = time.clock()
 #    #print("-->First NMS cost %f seconds, processed %d boxes" % ((t2-t1), n_boxes) )
 #
 #    n_boxes = len(pick)
@@ -320,22 +350,15 @@ def align_face(aligner, cv_img,  face_rects):
         ###############
         # Second stage
         ###############
-        t1 = time.clock()
+        # t1 = time.clock()
 
         # 2.1 construct input for RNet
         tmp_img = np.zeros((n_boxes, 24, 24, 3))  # (24, 24, 3, n_boxes)
         for k in range(n_boxes):
             tmp = np.zeros((int(tmph[k]), int(tmpw[k]), 3))
 
-            # #print "dx[k], edx[k]:", dx[k], edx[k]
-            # #print "dy[k], edy[k]:", dy[k], edy[k]
-            # #print "img.shape", img[y[k]:ey[k]+1, x[k]:ex[k]+1].shape
-            # #print "tmp.shape", tmp[dy[k]:edy[k]+1, dx[k]:edx[k]+1].shape
-
             tmp[dy[k]:edy[k] + 1, dx[k]:edx[k] +
                 1] = img[y[k]:ey[k] + 1, x[k]:ex[k] + 1]
-            # #print "y,ey,x,ex", y[k], ey[k], x[k], ex[k]
-            # #print "tmp", tmp.shape
 
             tmp_img[k, :, :, :] = cv2.resize(tmp, (24, 24))
 
@@ -352,7 +375,7 @@ def align_face(aligner, cv_img,  face_rects):
     #    scores = out['prob1'][:, 1]
     #    pass_t = np.where(scores > threshold[1])[0]
 
-        t2 = time.clock()
+        # t2 = time.clock()
         #print("-->RNet cost %f seconds, processed %d boxes, avg time: %f seconds" % ((t2-t1), n_boxes, (t2-t1)/n_boxes) )
 
     #    n_boxes = pass_t.shape[0]
@@ -366,9 +389,9 @@ def align_face(aligner, cv_img,  face_rects):
     #    reg_factors = out['conv5-2'][pass_t, :].T
 
     #    # 2.3 NMS
-    #    t1 = time.clock()
+    #    # t1 = time.clock()
     #    pick = nms(total_boxes, 0.7, 'Union')
-    #    t2 = time.clock()
+    #    # t2 = time.clock()
     #
     #    #print("-->Second NMS cost %f seconds, processed %d boxes" % ((t2-t1), n_boxes) )
     #
@@ -404,7 +427,7 @@ def align_face(aligner, cv_img,  face_rects):
 #            tmp_img = (tmp_img - 127.5) * 0.0078125  # [0,255] -> [-1,1]
 
     # 3.2 run ONet
-    t1 = time.clock()
+    # t1 = time.clock()
 
     tmp_img = np.swapaxes(tmp_img, 1, 3)
     ONet.blobs['data'].reshape(n_boxes, 3, 48, 48)
@@ -415,7 +438,7 @@ def align_face(aligner, cv_img,  face_rects):
     points = out['conv6-3']
 #    pass_t = np.where(scores > threshold[2])[0]
 #
-    t2 = time.clock()
+    # t2 = time.clock()
     #print("-->ONet cost %f seconds, processed %d boxes, avg time: %f seconds" % ((t2-t1), n_boxes, (t2-t1)/n_boxes ))
 #
 #    n_boxes = pass_t.shape[0]
@@ -441,9 +464,9 @@ def align_face(aligner, cv_img,  face_rects):
 #
 #    total_boxes = bbox_reg(total_boxes, reg_factors[:, :])
 #
-#    t1 = time.clock()
+#    # t1 = time.clock()
 #    pick = nms(total_boxes, 0.7, 'Min')
-#    t2 = time.clock()
+#    # t2 = time.clock()
 #
 #    #print("-->Third NMS cost %f seconds, processed %d boxes" % ((t2-t1), n_boxes) )
 #
@@ -463,16 +486,72 @@ def align_face(aligner, cv_img,  face_rects):
 #            #print "[9]:", total_boxes.shape[0]
 
     reg_factors = out['conv6-2'].T
-    w = total_boxes[:, 3] - total_boxes[:, 1] + 1
-    h = total_boxes[:, 2] - total_boxes[:, 0] + 1
+    boxes_w = total_boxes[:, 3] - total_boxes[:, 1] + 1
+    boxes_h = total_boxes[:, 2] - total_boxes[:, 0] + 1
 
-    points[:, 0:5] = np.tile(
-        w, (5, 1)).T * points[:, 0:5] + np.tile(total_boxes[:, 0], (5, 1)).T - 1
-    points[:, 5:10] = np.tile(
-        h, (5, 1)).T * points[:, 5:10] + np.tile(total_boxes[:, 1], (5, 1)).T - 1
-#
+    points[:, 0:5] = np.tile(boxes_w, (5, 1)).T * points[:, 0:5] \
+                     + np.tile(total_boxes[:, 0], (5, 1)).T - 1
+    points[:, 5:10] = np.tile(boxes_h, (5, 1)).T * points[:, 5:10] \
+                      + np.tile(total_boxes[:, 1], (5, 1)).T - 1
+
 
     total_boxes = bbox_reg(total_boxes, reg_factors)
+
+    ###############
+    # Extended stage
+    ###############
+    if LNet is not None:
+        # 4.1 construct input for LNet
+#        total_boxes = np.fix(total_boxes)
+        patchw = np.maximum(total_boxes[:, 2]-total_boxes[:, 0]+1,
+                            total_boxes[:, 3]-total_boxes[:, 1]+1)
+
+        patchw = np.round(patchw*0.25)
+
+        # make it even
+        patchw[np.where(np.mod(patchw,2) == 1)] += 1
+
+        pointx = np.zeros((n_boxes, 5))
+        pointy = np.zeros((n_boxes, 5))
+
+        tmp_img = np.zeros((n_boxes, 15, 24, 24), dtype=np.float32)
+        for i in range(5):
+            x, y = points[:, i], points[:, i+5]
+            x, y = np.round(x-0.5*patchw), np.round(y-0.5*patchw)
+            [dy, edy, dx, edx, y, ey, x, ex, tmpw, tmph] = pad(
+                            np.vstack([x, y, x+patchw-1, y+patchw-1]).T,
+                            w, h)
+            for j in range(n_boxes):
+                tmpim = np.zeros((tmpw[j], tmpw[j], 3), dtype=np.float32)
+                tmpim[dy[j]:edy[j]+1, dx[j]:edx[j]+1, :] = img[y[j]:ey[j]+1, x[j]:ex[j]+1, :]
+                tmp_img[j, i*3:i*3+3, :, :] = adjust_input(cv2.resize(tmpim, (24, 24)))
+
+        # 4.2 run LNet
+        # t1 = time.clock()
+
+        LNet.blobs['data'].reshape(n_boxes, 15, 24, 24)
+        LNet.blobs['data'].data[...] = tmp_img
+        out = LNet.forward()
+
+#        print('--->LNet output: \n{}'.format(out))
+
+        for k in range(5):
+            # do not make a large movement
+            layer_name = 'fc5_' + str(k+1)
+            tmp_index = np.where(np.abs(out[layer_name]-0.5) > 0.35)
+            out[layer_name][tmp_index[0]] = 0.5
+
+            pointx[:, k] = np.round(points[:, k] - 0.5*patchw) \
+                          + out[layer_name][:, 0]*patchw
+            pointy[:, k] = np.round(points[:, k+5] - 0.5*patchw) \
+                          + out[layer_name][:, 1]*patchw
+
+#        print('--->LNet output: \n{}'.format(out))
+
+        points = np.hstack([pointx, pointy])
+
+        # t2 = time.clock()
+        #print("-->LNet cost %f seconds, processed %d boxes, avg time: %f seconds" % ((t2-t1), n_boxes, (t2-t1)/n_boxes ))
 
     return total_boxes.tolist(), points.tolist()
 
@@ -495,8 +574,13 @@ def get_aligner(caffe_model_path, use_more_stage=False):
     ONet = caffe.Net(caffe_model_path + "/det3.prototxt",
                      caffe_model_path + "/det3.caffemodel", caffe.TEST)
 
+    LNet = caffe.Net(caffe_model_path + "/det4.prototxt",
+                     caffe_model_path + "/det4.caffemodel", caffe.TEST)
+
 #    return (PNet, RNet, ONet)
-    return (RNet, ONet)
+    return (RNet, ONet, LNet)
+#    return (RNet, ONet, None)
+
 
 
 def draw_faces(img, bboxes, points=None):
@@ -510,7 +594,7 @@ def draw_faces(img, bboxes, points=None):
         if points is not None:
             for j in range(5):
                 cv2.circle(img, (int(points[i][j]), int(
-                    points[i][j + 5])), 2, (0, 0, 255), 1, -1)
+                    points[i][j + 5])), 2, (0, 0, 255), -1)
 
 
 class MtcnnAligner:
@@ -600,8 +684,11 @@ if __name__ == "__main__":
     fp_rlt.close()
 
     draw_faces(img, bboxes, points)
+    base_name = osp.basename(img_path)
+    name, ext = osp.splitext(base_name)
+    ext = '.png'
 
-    save_name = osp.join(save_dir, osp.basename(img_path))
+    save_name = osp.join(save_dir, name + ext)
     cv2.imwrite(save_name, img)
 
     if show_img:
