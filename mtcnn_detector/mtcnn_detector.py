@@ -315,7 +315,7 @@ def generate_bboxes(scores_map, reg, scale, t):
     # !!! Use fix() for top-left point, and round() for bottom-right point
     # !!! So we can cover a 'whole' face !!! added by zhaoyafei 2017-07-18
     bb1 = np.fix((stride * bbox) / scale)
-    bb2 = np.fix((stride * bbox + cellsize) / scale)
+    bb2 = np.round((stride * bbox + cellsize) / scale)
 
 #    print 'bb1.shape:', bb1.shape
 #    print 'bb2.shape:', bb2.shape
