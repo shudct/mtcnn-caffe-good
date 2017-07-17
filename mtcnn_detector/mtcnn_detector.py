@@ -101,8 +101,33 @@ def pad(boxesA, w, h):
     ex = (boxes[:, 2]).astype(np.int32)
     ey = (boxes[:, 3]).astype(np.int32)
 
-    tmp = np.where(ex > w - 1)[0]
+#    x = (boxes[:, 0]).astype(np.int32)
+#    y = (boxes[:, 1]).astype(np.int32)
+#    ex = (boxes[:, 2]).astype(np.int32)
+#    ey = (boxes[:, 3]).astype(np.int32)
+#
+#    dx = np.maximum(0, -x)
+#    dy = np.maximum(0, -y)
+#
+#    x = np.maximum(0, x)
+#    y = np.maximum(0, x)
+#
+#    edx = tmpw - 1
+#    edy = tmph - 1
+#
+#    x = (boxes[:, 0]).astype(np.int32)
+#    y = (boxes[:, 1]).astype(np.int32)
+#    ex = (boxes[:, 2]).astype(np.int32)
+#    ey = (boxes[:, 3]).astype(np.int32)
 
+
+#    print ('\nbefore pad:\n dy:{}, edy:{}, dx:{}, edx:{}, y:{}, ey:{},'
+#    ' x:{}, ex:{}, tmpw:{}, tmph:{}'.format(dy, edy, dx, edx, y, ey,
+#        x, ex, tmpw, tmph))
+#    print 'w, h:', w, h
+#    print 'ey-y:', ey-y
+
+    tmp = np.where(ex > w - 1)[0]
     if tmp.shape[0] != 0:
         edx[tmp] = -ex[tmp] + w - 1 + tmpw[tmp] - 1
         ex[tmp] = w - 1
@@ -121,6 +146,27 @@ def pad(boxesA, w, h):
     if tmp.shape[0] != 0:
         dy[tmp] = - y[tmp]
         y[tmp] = 0  # np.zeros_like(y[tmp])
+
+    # for 5 points patch regression, x,y might overbound
+    tmp = np.where(x > w - 1)[0]
+    if tmp.shape[0] != 0:
+        dx[tmp] = tmpw[tmp] - 1
+        edx[tmp] = tmpw[tmp] - 2
+        x[tmp] = w - 1
+        ex[tmp] = w - 2
+
+    # for 5 points patch regression, x,y might overbound
+    tmp = np.where(y > h - 1)[0]
+    if tmp.shape[0] != 0:
+        dy[tmp] = tmph[tmp] - 1
+        edy[tmp] = tmph[tmp] - 2
+        y[tmp] = h - 1  # np.zeros_like(y[tmp])
+        ey[tmp] = h - 2
+
+#
+#    print ('\nafter pad:\n dy:{}, edy:{}, dx:{}, edx:{}, y:{}, ey:{},'
+#    ' x:{}, ex:{}, tmpw:{}, tmph:{}'.format(dy, edy, dx, edx, y, ey,
+#        x, ex, tmpw, tmph))
 
     return [dy, edy, dx, edx, y, ey, x, ex, tmpw, tmph]
 
@@ -269,7 +315,7 @@ def generate_bboxes(scores_map, reg, scale, t):
     # !!! Use fix() for top-left point, and round() for bottom-right point
     # !!! So we can cover a 'whole' face !!! added by zhaoyafei 2017-07-18
     bb1 = np.fix((stride * bbox) / scale)
-    bb2 = np.round((stride * bbox + cellsize) / scale)
+    bb2 = np.fix((stride * bbox + cellsize) / scale)
 
 #    print 'bb1.shape:', bb1.shape
 #    print 'bb2.shape:', bb2.shape
@@ -530,7 +576,9 @@ def detect_face(detector, cv_img, minsize=20,
     points[:, 5:10] = np.tile(boxes_h, (5, 1)).T * points[:, 5:10] \
         + np.tile(total_boxes[:, 1], (5, 1)).T - 1
 
+#    print '\nbefore reg:\ntotal_boxes:{}'.format(total_boxes)
     total_boxes = bbox_reg(total_boxes, reg_factors)
+#    print '\nafter reg:\ntotal_boxes:{}'.format(total_boxes)
 
     #t1 = time.clock()
     pick = nms(total_boxes, 0.7, 'Min')
@@ -546,6 +594,7 @@ def detect_face(detector, cv_img, minsize=20,
 
     total_boxes = total_boxes[pick, :]
     points = points[pick, :]
+#    print '\nafter reg:\ntotal_boxes:{}'.format(total_boxes)
 
     ###############
     # Extended stage
@@ -570,6 +619,10 @@ def detect_face(detector, cv_img, minsize=20,
             [dy, edy, dx, edx, y, ey, x, ex, tmpw, tmph] = pad(
                 np.vstack([x, y, x + patchw - 1, y + patchw - 1]).T,
                 w, h)
+
+#            print ('\nafter pad:\n dy:{}, edy:{}, dx:{}, edx:{}, y:{}, ey:{},'
+#            ' x:{}, ex:{}, tmpw:{}, tmph:{}'.format(dy, edy, dx, edx, y, ey,
+#                x, ex, tmpw, tmph))
 
             for j in range(n_boxes):
                 tmpim = np.zeros((tmpw[j], tmpw[j], 3), dtype=np.float32)

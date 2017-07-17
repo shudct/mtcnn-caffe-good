@@ -122,6 +122,27 @@ def pad(boxesA, w, h):
         dy[tmp] = - y[tmp]
         y[tmp] = 0  # np.zeros_like(y[tmp])
 
+    # for 5 points patch regression, x,y might overbound
+    tmp = np.where(x > w - 1)[0]
+    if tmp.shape[0] != 0:
+        dx[tmp] = tmpw[tmp] - 1
+        edx[tmp] = tmpw[tmp] - 2
+        x[tmp] = w - 1
+        ex[tmp] = w - 2
+
+    # for 5 points patch regression, x,y might overbound
+    tmp = np.where(y > h - 1)[0]
+    if tmp.shape[0] != 0:
+        dy[tmp] = tmph[tmp] - 1
+        edy[tmp] = tmph[tmp] - 2
+        y[tmp] = h - 1  # np.zeros_like(y[tmp])
+        ey[tmp] = h - 2
+
+#
+#    print ('\nafter pad:\n dy:{}, edy:{}, dx:{}, edx:{}, y:{}, ey:{},'
+#    ' x:{}, ex:{}, tmpw:{}, tmph:{}'.format(dy, edy, dx, edx, y, ey,
+#        x, ex, tmpw, tmph))
+
     return [dy, edy, dx, edx, y, ey, x, ex, tmpw, tmph]
 
 

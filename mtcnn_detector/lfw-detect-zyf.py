@@ -150,7 +150,7 @@ if __name__ == "__main__":
 #    lfw_list_fn = "./list_lfw_failed3.txt"
 #    lfw_list_fn = "lfw_list_mtcnn.txt"
     save_dir = './lfw_rlt'
-    # lfw_root = '/disk2/data/FACE/LFW/LFW'
+#    lfw_root = '/disk2/data/FACE/LFW/LFW'
     lfw_root = r'C:\zyf\dataset\lfw'
 
     print(sys.argv)
@@ -164,4 +164,5 @@ if __name__ == "__main__":
     if len(sys.argv) > 3:
         show_img = not(not(sys.argv[3]))
 
-    main(lfw_list_fn, lfw_root, save_dir, save_img=True, show_img=True)
+#    main(lfw_list_fn, lfw_root, save_dir, save_img=True, show_img=True)
+    main(lfw_list_fn, lfw_root, save_dir, save_img=False, show_img=False)
