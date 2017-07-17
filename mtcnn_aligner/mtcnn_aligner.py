@@ -12,15 +12,15 @@ import time
 def preprocess_cvimg(cv_img):
     # BGR->RGB
     img = cv_img[:, :, (2, 1, 0)]
-    # Normalize
-    img = (img - 127.5) * 0.0078125  # [0,255] -> [-1,1]
+#    # Normalize
+#    img = (img - 127.5) * 0.0078125  # [0,255] -> [-1,1]
 
     return img
 
 
 def adjust_input(in_data):
     """
-        adjust the input from (h, w, c) to ( 1, c, h, w) for network input
+        adjust the input from (h, w, c) to ( 1, c, w, h) for network input
 
     Parameters:
     ----------
@@ -28,7 +28,7 @@ def adjust_input(in_data):
             input data
     Returns:
     -------
-        out_data: numpy array of shape (1, c, h, w)
+        out_data: numpy array of shape (1, c, w, h)
             reshaped array
     """
     if in_data.dtype is not np.dtype('float32'):
@@ -42,30 +42,42 @@ def adjust_input(in_data):
 
 #    out_data = (out_data - 127.5)*0.0078125
 
-    out_data = np.expand_dims(out_data, 0)
-    out_data = np.swapaxes(out_data, 1, 3)
+    out_data = np.expand_dims(out_data, 0)  # from (h, w, c) to (1, h, w, c)
+    out_data = np.swapaxes(out_data, 1, 3)  # from (N, h, w, c) to (N, c, w, h)
 
     return out_data
 
 
 def bbox_reg(bbox, reg):
     reg = reg.T
-
-    # calibrate bouding boxes
-    if reg.shape[1] == 1:
-        #print("reshape of reg")
-        pass  # reshape of reg
+#
+#    # calibrate bouding boxes
+#    if reg.shape[1] == 1:
+#        #print("reshape of reg")
+#        pass  # reshape of reg
+#
+#    w = bbox[:, 2] - bbox[:, 0] + 1
+#    h = bbox[:, 3] - bbox[:, 1] + 1
+#
+#    bb0 = bbox[:, 0] + reg[:, 0] * w
+#    bb1 = bbox[:, 1] + reg[:, 1] * h
+#    bb2 = bbox[:, 2] + reg[:, 2] * w
+#    bb3 = bbox[:, 3] + reg[:, 3] * h
+#
+#    bbox[:, 0:4] = np.array([bb0, bb1, bb2, bb3]).T
+#    # #print "bb", bbox
+#    return bbox
 
     w = bbox[:, 2] - bbox[:, 0] + 1
+    w = np.expand_dims(w, 1)
     h = bbox[:, 3] - bbox[:, 1] + 1
+    h = np.expand_dims(h, 1)
 
-    bb0 = bbox[:, 0] + reg[:, 0] * w
-    bb1 = bbox[:, 1] + reg[:, 1] * h
-    bb2 = bbox[:, 2] + reg[:, 2] * w
-    bb3 = bbox[:, 3] + reg[:, 3] * h
+    reg_m = np.hstack([w, h, w, h])
+    aug = reg_m * reg
 
-    bbox[:, 0:4] = np.array([bb0, bb1, bb2, bb3]).T
-    # #print "bb", bbox
+    bbox[:, 0:4] = bbox[:, 0:4] + aug
+
     return bbox
 
 
@@ -103,12 +115,12 @@ def pad(boxesA, w, h):
     tmp = np.where(x < 0)[0]
     if tmp.shape[0] != 0:
         dx[tmp] = -x[tmp]
-        x[tmp] = np.zeros_like(x[tmp])
+        x[tmp] = 0  # np.zeros_like(x[tmp])
 
     tmp = np.where(y < 0)[0]
     if tmp.shape[0] != 0:
         dy[tmp] = - y[tmp]
-        y[tmp] = np.zeros_like(y[tmp])
+        y[tmp] = 0  # np.zeros_like(y[tmp])
 
     return [dy, edy, dx, edx, y, ey, x, ex, tmpw, tmph]
 
@@ -117,19 +129,21 @@ def convert_to_squares(bboxA):
     # convert bboxA to square
     w = bboxA[:, 2] - bboxA[:, 0]
     h = bboxA[:, 3] - bboxA[:, 1]
-    l = np.maximum(w, h).T
+    max_side = np.maximum(w, h).T
 
     # #print 'bboxA', bboxA
     # #print 'w', w
     # #print 'h', h
     # #print 'l', l
-    bboxA[:, 0] = bboxA[:, 0] + w * 0.5 - l * 0.5
-    bboxA[:, 1] = bboxA[:, 1] + h * 0.5 - l * 0.5
-    bboxA[:, 2:4] = bboxA[:, 0:2] + np.repeat([l], 2, axis=0).T
+    bboxA[:, 0] = bboxA[:, 0] + w * 0.5 - max_side * 0.5
+    bboxA[:, 1] = bboxA[:, 1] + h * 0.5 - max_side * 0.5
+#    bboxA[:, 2:4] = bboxA[:, 0:2] + np.repeat([max_side], 2, axis=0).T - 1
+    bboxA[:, 2] = bboxA[:, 0] + max_side - 1
+    bboxA[:, 3] = bboxA[:, 1] + max_side - 1
     return bboxA
 
 
-def nms(boxes, threshold=0.7, type='Union'):
+def nms(boxes, threshold=0.5, type='Union'):
     """nms
     :boxes: [:,0:5]
     :threshold: 0.5 like
@@ -138,29 +152,38 @@ def nms(boxes, threshold=0.7, type='Union'):
     """
     if boxes.shape[0] == 0:
         return np.array([])
+
     x1 = boxes[:, 0]
     y1 = boxes[:, 1]
     x2 = boxes[:, 2]
     y2 = boxes[:, 3]
-    s = boxes[:, 4]
-    area = np.multiply(x2 - x1 + 1, y2 - y1 + 1)
-    I = np.array(s.argsort())  # read s using I
+    score = boxes[:, 4]
+#    area = np.multiply(x2 - x1 + 1, y2 - y1 + 1)
+    area = (x2 - x1 + 1) * (y2 - y1 + 1)
+#    idxs = score.argsort()  # read s using idxs
+    idxs = np.argsort(score)
 
     pick = []
-    while len(I) > 0:
-        xx1 = np.maximum(x1[I[-1]], x1[I[0:-1]])
-        yy1 = np.maximum(y1[I[-1]], y1[I[0:-1]])
-        xx2 = np.minimum(x2[I[-1]], x2[I[0:-1]])
-        yy2 = np.minimum(y2[I[-1]], y2[I[0:-1]])
+    while len(idxs) > 0:
+        last = len(idxs) - 1
+        i = idxs[last]
+        pick.append(i)
+
+        xx1 = np.maximum(x1[i], x1[idxs[0:last]])
+        yy1 = np.maximum(y1[i], y1[idxs[0:last]])
+        xx2 = np.minimum(x2[i], x2[idxs[0:last]])
+        yy2 = np.minimum(y2[i], y2[idxs[0:last]])
         w = np.maximum(0.0, xx2 - xx1 + 1)
         h = np.maximum(0.0, yy2 - yy1 + 1)
         inter = w * h
         if type == 'Min':
-            o = inter / np.minimum(area[I[-1]], area[I[0:-1]])
+            overlap = inter / np.minimum(area[i], area[idxs[0:last]])
         else:
-            o = inter / (area[I[-1]] + area[I[0:-1]] - inter)
-        pick.append(I[-1])
-        I = I[np.where(o <= threshold)[0]]
+            overlap = inter / (area[i] + area[idxs[0:last]] - inter)
+
+#        idxs = idxs[np.where(overlap <= threshold)[0]]
+        idxs = np.delete(idxs, np.concatenate(([last],
+                                               np.where(overlap > threshold)[0])))
     return pick
 
 
@@ -175,6 +198,7 @@ def align_face(aligner, cv_img,  face_rects):
     img = cv_img.copy()
     img = preprocess_cvimg(img)
 
+    img = (img - 127.5) * 0.0078125  # [0,255] -> [-1,1]
 
 #    factor_count = 0
 #    total_boxes = np.zeros((0, 9), np.float)
@@ -240,7 +264,7 @@ def align_face(aligner, cv_img,  face_rects):
         total_boxes = bbox_reg(total_boxes, reg_factors)
 
     ###############
-    #third stage
+    # third stage
     ###############
     total_boxes = convert_to_squares(total_boxes)
 
@@ -403,9 +427,8 @@ def draw_faces(img, bboxes, points=None, draw_score=False):
             bbox[2]), int(bbox[3])), (0, 255, 0), 1)
 
         if draw_score:
-            text = '%2.3f' % (bbox[4]*100)
-            cv2_put_text_to_image(img, text, int(bbox[0]), int(bbox[3]) + 5 )
-
+            text = '%2.3f' % (bbox[4] * 100)
+            cv2_put_text_to_image(img, text, int(bbox[0]), int(bbox[3]) + 5)
 
         if points is not None:
             for j in range(5):
