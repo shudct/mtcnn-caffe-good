@@ -10,6 +10,7 @@ import cv2
 import json
 import os
 import os.path as osp
+import sys
 
 #from matplotlib import pyplot as plt
 from mtcnn_aligner import MtcnnAligner
