@@ -6,7 +6,7 @@ import os
 import os.path as osp
 
 import cv2
-import numpy as np
+# import numpy as np
 
 import time
 import json
@@ -97,10 +97,10 @@ def main(lfw_list_fn,
         ttl_time += t2 - t1
         print("detect_face() costs %f seconds" % (t2 - t1))
 
-        if len(bboxes)>0:
+        if len(bboxes) > 0:
             for (box, pts) in zip(bboxes, points):
-#                box = box.tolist()
-#                pts = pts.tolist()
+                #                box = box.tolist()
+                #                pts = pts.tolist()
                 tmp = {'rect': box[0:4],
                        'score': box[4],
                        'pts': pts
@@ -146,14 +146,17 @@ def main(lfw_list_fn,
 if __name__ == "__main__":
     print_usage()
 
-    lfw_list_fn = "./lfw_list_part.txt"
-#    lfw_list_fn = "./list_lfw_failed3.txt"
+#    lfw_list_fn = "./lfw_list_part.txt"
+    lfw_list_fn = "./list_lfw_failed3.txt"
 #    lfw_list_fn = "lfw_list_mtcnn.txt"
     save_dir = './lfw_rlt'
 #    lfw_root = '/disk2/data/FACE/LFW/LFW'
     lfw_root = r'C:\zyf\dataset\lfw'
 
     print(sys.argv)
+
+    if not osp.exists(save_dir):
+        os.makedirs(save_dir)
 
     if len(sys.argv) > 1:
         lfw_list_fn = sys.argv[1]
@@ -164,5 +167,5 @@ if __name__ == "__main__":
     if len(sys.argv) > 3:
         show_img = not(not(sys.argv[3]))
 
-#    main(lfw_list_fn, lfw_root, save_dir, save_img=True, show_img=True)
-    main(lfw_list_fn, lfw_root, save_dir, save_img=False, show_img=False)
+    main(lfw_list_fn, lfw_root, save_dir, save_img=True, show_img=True)
+#    main(lfw_list_fn, lfw_root, save_dir, save_img=False, show_img=False)
