@@ -167,5 +167,5 @@ if __name__ == "__main__":
     if len(sys.argv) > 3:
         show_img = not(not(sys.argv[3]))
 
-    main(lfw_list_fn, lfw_root, save_dir, save_img=True, show_img=True)
-#    main(lfw_list_fn, lfw_root, save_dir, save_img=False, show_img=False)
+#    main(lfw_list_fn, lfw_root, save_dir, save_img=True, show_img=True)
+    main(lfw_list_fn, lfw_root, save_dir, save_img=False, show_img=False)
