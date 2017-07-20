@@ -16,7 +16,7 @@ import sys
 from mtcnn_aligner import MtcnnAligner
 
 def print_usage():
-    usage = 'python %s <img-det-json-file> <lfw-root-dir> [<MTCNN-model-dir>]' % osp.basename(__file__)
+    usage = 'python %s <img-det-json-file> <lfw-root-dir> [<MTCNN-model-dir>] [<save-dir>]' % osp.basename(__file__)
     print('USAGE: ' + usage)
 
 
@@ -217,10 +217,12 @@ if __name__ == "__main__":
         fd_json_fn = sys.argv[1]
 
     if len(sys.argv) > 2:
-        save_dir = sys.argv[2]
+        img_root_dir = sys.argv[2]
 
     if len(sys.argv) > 3:
         mtcnn_model_dir = sys.argv[3]
 
+    if len(sys.argv) > 4:
+        save_dir = sys.argv[4]
 
     main(fd_json_fn, img_root_dir, mtcnn_model_dir, save_dir)
