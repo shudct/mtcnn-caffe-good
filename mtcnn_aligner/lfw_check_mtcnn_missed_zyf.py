@@ -164,9 +164,7 @@ def main(face_json_file, img_root_dir, mtcnn_model_dir, save_dir=None):
                           "no faces have overlap>={} with groundtruth".format(
                               overlap_thresh_0) +
                           '\n')
-            fp_log2.write("--> max_score_idx   = {}\n".format(max_score_idx))
             fp_log2.write("--> max_overlap_idx = {}\n".format(max_overlap_idx))
-            fp_log2.write("--> scores   = {}\n".format(scores))
             fp_log2.write("--> overlaps = {}\n".format(overlaps))
 
             img = cv2.imread(img_fn)
