@@ -188,7 +188,7 @@ def main(face_json_file, img_root_dir, mtcnn_model_dir, save_dir=None):
     fp_log2.write("\t{} missed because of max_overlap<thresh\n".format(
         missed_count2))
 
-    json.dump(img_list, fp_rlt, indent=4)
+    json.dump(img_list, fp_rlt, indent=2)
     fp_rlt.close()
 
     fp_log1.close()

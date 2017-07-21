@@ -35,7 +35,8 @@ def main(lfw_list_fn,
 
     fp_rlt = open(osp.join(save_dir, 'lfw_mtcnn_fd_rlt.json'), 'w')
 
-    result_list = []
+#    result_list = []
+    fp_rlt.write('[\n')
 
     t1 = time.clock()
     detector = MtcnnDetector(caffe_model_path)
@@ -109,7 +110,10 @@ def main(lfw_list_fn,
 
             rlt['face_count'] = len(bboxes)
         rlt['message'] = 'success'
-        result_list.append(rlt)
+#        result_list.append(rlt)
+        s = json.dumps(rlt, indent=2)
+        fp_rlt.write(s + ',\n')
+#        fp_rlt.write(',\n' + s)
 
 #        print('output bboxes: ' + str(bboxes))
 #        print('output points: ' + str(points))
@@ -135,7 +139,16 @@ def main(lfw_list_fn,
             if ch == 27:
                 break
 
-    json.dump(result_list, fp_rlt, indent=4)
+#    json.dump(result_list, fp_rlt, indent=2)
+#    print fp_rlt.tell()
+
+    # delete the last ','
+    if sys.platform is 'win32':
+        fp_rlt.seek(-3, 1)
+    else:
+        fp_rlt.seek(-2, 1)
+    fp_rlt.write('\n]')
+
     fp_rlt.close()
     fp.close()
 

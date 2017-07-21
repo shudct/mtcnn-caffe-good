@@ -6,7 +6,7 @@ import caffe
 import cv2
 import numpy as np
 
-import time
+#import time
 
 
 def preprocess_cvimg(cv_img):
@@ -759,6 +759,7 @@ class MtcnnDetector:
 if __name__ == "__main__":
     import os.path as osp
     import os
+    import time
 
     show_img = True
 
